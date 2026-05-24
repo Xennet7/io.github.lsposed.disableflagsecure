@@ -1,12 +1,17 @@
 pluginManagement {
+
     repositories {
+
         gradlePluginPortal()
+
         google()
+
         mavenCentral()
     }
 }
 
 plugins {
+
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
@@ -19,17 +24,12 @@ dependencyResolutionManagement {
     repositories {
 
         google()
+
         mavenCentral()
 
-        mavenLocal {
-
-            content {
-                includeGroup("io.github.libxposed")
-            }
-        }
-
         maven {
-            url "https://api.xposed.info/"
+
+            url 'https://api.xposed.info/'
         }
     }
 }

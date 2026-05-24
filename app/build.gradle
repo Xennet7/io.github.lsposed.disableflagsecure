@@ -12,6 +12,8 @@ android {
 
     buildToolsVersion "36.1.0"
 
+    namespace rootProject.ext.modulePackage
+
     defaultConfig {
 
         applicationId rootProject.ext.modulePackage
@@ -25,16 +27,42 @@ android {
 
     buildTypes {
 
-        configureEach {
+        debug {
 
-            vcsInfo.include false
+            minifyEnabled false
+        }
 
-            proguardFiles(
-                    getDefaultProguardFile(
-                            'proguard-android-optimize.txt'
-                    ),
-                    'proguard-rules.pro'
-            )
+        release {
+
+            minifyEnabled false
+            shrinkResources false
+
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    lint {
+
+        checkReleaseBuilds false
+    }
+
+    dependenciesInfo.includeInApk false
+
+    enableKotlin = false
+}
+
+dependencies {
+
+    compileOnly 'androidx.annotation:annotation:1.9.1'
+
+    compileOnly 'io.github.libxposed:api:101.0.0'
+}            )
         }
 
         debug {

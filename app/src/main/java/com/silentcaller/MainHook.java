@@ -1,8 +1,6 @@
 package com.silentcaller;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import android.telephony.TelephonyManager;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -12,75 +10,29 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class MainHook implements IXposedHookLoadPackage {
 
-    private static final String CONFIG =
-            "/data/adb/silentcaller.txt";
-
-    private boolean isBlocked(String number) {
-
-        try {
-
-            File file = new File(CONFIG);
-
-            if (!file.exists())
-                return false;
-
-            BufferedReader br =
-                    new BufferedReader(
-                            new FileReader(file)
-                    );
-
-            String line;
-
-            while ((line = br.readLine()) != null) {
-
-                line = line.trim();
-
-                if (line.isEmpty())
-                    continue;
-
-                if (number.contains(line)) {
-
-                    br.close();
-                    return true;
-                }
-            }
-
-            br.close();
-
-        } catch (Throwable t) {
-
-            XposedBridge.log(t);
-        }
-
-        return false;
-    }
-
     @Override
     public void handleLoadPackage(
             XC_LoadPackage.LoadPackageParam lpparam
     ) {
 
         if (!lpparam.packageName.equals(
-                "com.android.server.telecom"
+                "com.android.incallui"
         )) {
             return;
         }
 
         try {
 
-            XposedBridge.log(
-                    "SilentCaller loaded"
-            );
-
             Class<?> clazz =
                     XposedHelpers.findClass(
-                            "com.android.server.telecom.AsyncRingtonePlayer",
+                            "com.android.incallui.incomingshow.view.IncomingShowView",
                             lpparam.classLoader
                     );
 
             XposedHelpers.findAndHookMethod(
                     clazz,
                     "play",
+
                     new XC_MethodHook() {
 
                         @Override
@@ -90,19 +42,11 @@ public class MainHook implements IXposedHookLoadPackage {
 
                             try {
 
-                                String data =
-                                        String.valueOf(
-                                                param.thisObject
-                                        );
+                                XposedBridge.log(
+                                        "SilentCaller blocked ringtone"
+                                );
 
-                                if (isBlocked(data)) {
-
-                                    XposedBridge.log(
-                                            "SilentCaller blocked"
-                                    );
-
-                                    param.setResult(null);
-                                }
+                                param.setResult(null);
 
                             } catch (Throwable t) {
 
@@ -112,7 +56,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
 
             XposedBridge.log(
-                    "SilentCaller hook attached"
+                    "SilentCaller hook loaded"
             );
 
         } catch (Throwable t) {

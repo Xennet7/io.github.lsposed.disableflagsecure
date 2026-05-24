@@ -3,38 +3,78 @@ plugins {
 }
 
 android {
+
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
         }
     }
+
     buildToolsVersion "36.1.0"
 
     defaultConfig {
-        applicationId "io.github.lsposed.disableflagsecure"
+
+        applicationId rootProject.ext.modulePackage
+
         minSdkVersion 31
         targetSdkVersion 36
-        versionCode rootProject.ext.commitCount
-        versionName "5.0.1"
-    }
 
-    Properties localProperties = new Properties()
-    if (project.rootProject.file('local.properties').exists()) {
-        localProperties.load(project.rootProject.file('local.properties').newDataInputStream())
-    }
-
-    signingConfigs {
-        if (localProperties.getProperty("storeFile") != null) {
-            config {
-                storeFile project.rootProject.file(localProperties.getProperty("storeFile"))
-                storePassword localProperties.getProperty("storePassword")
-                keyAlias localProperties.getProperty("keyAlias")
-                keyPassword localProperties.getProperty("keyPassword")
-            }
-        }
+        versionCode rootProject.ext.moduleCode
+        versionName rootProject.ext.moduleVersion
     }
 
     buildTypes {
+
+        configureEach {
+
+            vcsInfo.include false
+
+            proguardFiles(
+                    getDefaultProguardFile(
+                            'proguard-android-optimize.txt'
+                    ),
+                    'proguard-rules.pro'
+            )
+        }
+
+        debug {
+
+            minifyEnabled false
+        }
+
+        release {
+
+            minifyEnabled false
+            shrinkResources false
+
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    lint {
+
+        checkReleaseBuilds false
+    }
+
+    dependenciesInfo.includeInApk false
+
+    enableKotlin = false
+
+    namespace rootProject.ext.modulePackage
+}
+
+dependencies {
+
+    compileOnly 'androidx.annotation:annotation:1.9.1'
+
+    compileOnly 'io.github.libxposed:api:101.0.0'
+}    buildTypes {
         configureEach {
             vcsInfo.include false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

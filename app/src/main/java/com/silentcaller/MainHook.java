@@ -1,7 +1,5 @@
 package com.silentcaller;
 
-import android.app.Activity;
-
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -21,23 +19,40 @@ public class MainHook implements IXposedHookLoadPackage {
             return;
         }
 
-        XposedBridge.log("INCALLUI LOADED");
+        try {
 
-        XposedHelpers.findAndHookMethod(
-                Activity.class,
-                "onResume",
+            Class<?> clazz =
+                    XposedHelpers.findClass(
+                            "com.android.incallui.incomingshow.view.IncomingShowView",
+                            lpparam.classLoader
+                    );
 
-                new XC_MethodHook() {
+            XposedHelpers.findAndHookMethod(
+                    clazz,
+                    "play",
 
-                    @Override
-                    protected void beforeHookedMethod(
-                            MethodHookParam param
-                    ) {
+                    new XC_MethodHook() {
 
-                        XposedBridge.log(
-                                "Activity resumed in InCallUI"
-                        );
-                    }
-                });
+                        @Override
+                        protected void beforeHookedMethod(
+                                MethodHookParam param
+                        ) {
+
+                            XposedBridge.log(
+                                    "IncomingShowView.play BLOCKED"
+                            );
+
+                            param.setResult(null);
+                        }
+                    });
+
+            XposedBridge.log(
+                    "IncomingShowView hook installed"
+            );
+
+        } catch (Throwable t) {
+
+            XposedBridge.log(t);
+        }
     }
 }

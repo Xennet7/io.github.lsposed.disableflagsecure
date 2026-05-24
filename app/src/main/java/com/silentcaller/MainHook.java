@@ -1,4 +1,3 @@
-
 package com.silentcaller;
 
 import java.io.BufferedReader;
@@ -69,6 +68,10 @@ public class MainHook implements IXposedHookLoadPackage {
 
         try {
 
+            XposedBridge.log(
+                    "SilentCaller loaded"
+            );
+
             Class<?> clazz =
                     XposedHelpers.findClass(
                             "com.android.server.telecom.AsyncRingtonePlayer",
@@ -78,7 +81,6 @@ public class MainHook implements IXposedHookLoadPackage {
             XposedHelpers.findAndHookMethod(
                     clazz,
                     "play",
-                    Object.class,
                     new XC_MethodHook() {
 
                         @Override
@@ -90,14 +92,13 @@ public class MainHook implements IXposedHookLoadPackage {
 
                                 String data =
                                         String.valueOf(
-                                                param.args[0]
+                                                param.thisObject
                                         );
 
                                 if (isBlocked(data)) {
 
                                     XposedBridge.log(
-                                            "SilentCaller blocked: "
-                                                    + data
+                                            "SilentCaller blocked"
                                     );
 
                                     param.setResult(null);
@@ -111,7 +112,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
 
             XposedBridge.log(
-                    "SilentCaller hook loaded"
+                    "SilentCaller hook attached"
             );
 
         } catch (Throwable t) {

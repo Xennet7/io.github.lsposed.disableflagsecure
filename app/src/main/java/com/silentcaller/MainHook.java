@@ -1,5 +1,7 @@
 package com.silentcaller;
 
+import android.media.MediaPlayer;
+
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -23,13 +25,14 @@ public class MainHook implements IXposedHookLoadPackage {
 
             Class<?> clazz =
                     XposedHelpers.findClass(
-                            "com.android.incallui.incomingshow.view.IncomingShowView",
+                            "com.android.incallui.incomingshow.view.IncomingShowView$3",
                             lpparam.classLoader
                     );
 
             XposedHelpers.findAndHookMethod(
                     clazz,
-                    "play",
+                    "onPrepared",
+                    MediaPlayer.class,
 
                     new XC_MethodHook() {
 
@@ -39,15 +42,20 @@ public class MainHook implements IXposedHookLoadPackage {
                         ) {
 
                             XposedBridge.log(
-                                    "IncomingShowView.play BLOCKED"
+                                    "BLOCKED onPrepared"
                             );
+
+                            MediaPlayer mp =
+                                    (MediaPlayer) param.args[0];
+
+                            mp.stop();
 
                             param.setResult(null);
                         }
                     });
 
             XposedBridge.log(
-                    "IncomingShowView hook installed"
+                    "onPrepared hook installed"
             );
 
         } catch (Throwable t) {

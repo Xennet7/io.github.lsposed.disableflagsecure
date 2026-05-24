@@ -1,6 +1,6 @@
 plugins {
     id 'com.android.application' version '9.1.0' apply false
-    id 'org.lsposed.lsplugin.jgit' version "1.1"
+    id 'org.lsposed.lsplugin.jgit' version '1.1'
 }
 
 tasks.register('clean', Delete) {
@@ -8,9 +8,24 @@ tasks.register('clean', Delete) {
 }
 
 tasks.named("updateDaemonJvm") {
+
     languageVersion = JavaLanguageVersion.of(21)
     vendor = JvmVendorSpec.ADOPTIUM
 }
 
 var repo = jgit.repo(true)
-ext.commitCount = repo.commitCount('refs/remotes/origin/main')
+
+ext {
+
+    commitCount = repo.commitCount(
+            'refs/remotes/origin/main'
+    )
+
+    moduleName = "SilentCaller"
+
+    modulePackage = "com.silentcaller"
+
+    moduleVersion = "1.0"
+
+    moduleCode = commitCount
+}

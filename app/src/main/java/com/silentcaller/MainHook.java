@@ -1,9 +1,5 @@
 package com.silentcaller;
 
-import android.app.AndroidAppHelper;
-import android.app.NotificationManager;
-import android.content.Context;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -67,22 +63,33 @@ public class MainHook implements IXposedHookLoadPackage {
 
         try {
 
-            Context context =
-                    AndroidAppHelper.currentApplication();
+            Object service =
+                    XposedHelpers.callStaticMethod(
+                            XposedHelpers.findClass(
+                                    "android.app.INotificationManager$Stub",
+                                    null
+                            ),
+                            "asInterface",
+                            XposedHelpers.callStaticMethod(
+                                    XposedHelpers.findClass(
+                                            "android.os.ServiceManager",
+                                            null
+                                    ),
+                                    "getService",
+                                    "notification"
+                            )
+                    );
 
-            if (context == null)
-                return;
+            XposedHelpers.callMethod(
+                    service,
+                    "setInterruptionFilter",
+                    "android",
+                    mode
+            );
 
-            NotificationManager nm =
-                    (NotificationManager)
-                            context.getSystemService(
-                                    Context.NOTIFICATION_SERVICE
-                            );
-
-            if (nm == null)
-                return;
-
-            nm.setInterruptionFilter(mode);
+            XposedBridge.log(
+                    "DND MODE SET: " + mode
+            );
 
         } catch (Throwable t) {
 
@@ -151,9 +158,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                             "BLOCKED CALL -> DND ON"
                                     );
 
-                                    setDnd(
-                                            NotificationManager.INTERRUPTION_FILTER_NONE
-                                    );
+                                    setDnd(3);
                                 }
 
                                 // CALL_STATE_IDLE
@@ -163,9 +168,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                             "CALL ENDED -> DND OFF"
                                     );
 
-                                    setDnd(
-                                            NotificationManager.INTERRUPTION_FILTER_ALL
-                                    );
+                                    setDnd(1);
                                 }
 
                             } catch (Throwable t) {

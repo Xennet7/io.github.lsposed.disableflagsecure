@@ -1,7 +1,10 @@
 package com.silentcaller;
 
+import android.app.AndroidAppHelper;
+import android.app.NotificationManager;
+import android.content.Context;
+
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileReader;
 
@@ -60,24 +63,26 @@ public class MainHook implements IXposedHookLoadPackage {
         return false;
     }
 
-    private void root(String cmd) {
+    private void setDnd(int mode) {
 
         try {
 
-            Process p =
-                    Runtime.getRuntime().exec("su");
+            Context context =
+                    AndroidAppHelper.currentApplication();
 
-            DataOutputStream os =
-                    new DataOutputStream(
-                            p.getOutputStream()
-                    );
+            if (context == null)
+                return;
 
-            os.writeBytes(cmd + "\n");
-            os.writeBytes("exit\n");
+            NotificationManager nm =
+                    (NotificationManager)
+                            context.getSystemService(
+                                    Context.NOTIFICATION_SERVICE
+                            );
 
-            os.flush();
+            if (nm == null)
+                return;
 
-            p.waitFor();
+            nm.setInterruptionFilter(mode);
 
         } catch (Throwable t) {
 
@@ -146,8 +151,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                             "BLOCKED CALL -> DND ON"
                                     );
 
-                                    root(
-                                            "cmd notification set_dnd none"
+                                    setDnd(
+                                            NotificationManager.INTERRUPTION_FILTER_NONE
                                     );
                                 }
 
@@ -158,8 +163,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                             "CALL ENDED -> DND OFF"
                                     );
 
-                                    root(
-                                            "cmd notification set_dnd off"
+                                    setDnd(
+                                            NotificationManager.INTERRUPTION_FILTER_ALL
                                     );
                                 }
 

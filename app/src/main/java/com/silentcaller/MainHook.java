@@ -59,11 +59,11 @@ public class MainHook implements IXposedHookLoadPackage {
 
                 if (number.equals(line)) {
 
-                    br.close();
-
                     XposedBridge.log(
                             "MATCH FOUND"
                     );
+
+                    br.close();
 
                     return true;
                 }
@@ -102,6 +102,10 @@ public class MainHook implements IXposedHookLoadPackage {
                             lpparam.classLoader
                     );
 
+            XposedBridge.log(
+                    "TelephonyRegistry hooked"
+            );
+
             XposedHelpers.findAndHookMethod(
                     cls,
                     "notifyCallState",
@@ -132,13 +136,15 @@ public class MainHook implements IXposedHookLoadPackage {
                                                 + number
                                 );
 
-                                if (state == 1 &&
-                                        isBlocked(number)) {
+                                if (state != 1)
+                                    return;
 
-                                    XposedBridge.log(
-                                            "BLOCKED CALL"
-                                    );
-                                }
+                                if (!isBlocked(number))
+                                    return;
+
+                                XposedBridge.log(
+                                        "BLOCKED CALL"
+                                );
 
                             } catch (Throwable t) {
 

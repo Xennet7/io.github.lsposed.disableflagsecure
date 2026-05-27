@@ -3,6 +3,8 @@ package com.silentcaller;
 import android.app.NotificationManager;
 import android.content.Context;
 
+import java.io.File;
+
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -12,11 +14,22 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public class MainHook implements IXposedHookLoadPackage {
 
     // =========================
-    // HARD CODED NUMBER
+    // HARD CODED BLOCK NUMBER
     // =========================
 
     private static final String BLOCKED =
             "+918086298339";
+
+    // =========================
+    // REALTIME MASTER SWITCH
+    // =========================
+
+    private static boolean isEnabled() {
+
+        return !new File(
+                "/data/adb/silentcaller_disable"
+        ).exists();
+    }
 
     @Override
     public void handleLoadPackage(
@@ -56,6 +69,14 @@ public class MainHook implements IXposedHookLoadPackage {
                         protected void beforeHookedMethod(
                                 MethodHookParam param
                         ) throws Throwable {
+
+                            // =====================
+                            // MASTER SWITCH
+                            // =====================
+
+                            if (!isEnabled()) {
+                                return;
+                            }
 
                             try {
 
@@ -115,6 +136,10 @@ public class MainHook implements IXposedHookLoadPackage {
                                                                     Context.NOTIFICATION_SERVICE
                                                             );
 
+                                            // =====================
+                                            // ENABLE DND NONE
+                                            // =====================
+
                                             nm.setInterruptionFilter(
                                                     NotificationManager.INTERRUPTION_FILTER_NONE
                                             );
@@ -135,9 +160,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 }
 
                                 // =====================
-                                // OPTIONAL:
-                                // RESTORE NORMAL DND
-                                // WHEN CALL ENDS
+                                // RESTORE NORMAL MODE
                                 // =====================
 
                                 if (state == 0) {
@@ -186,7 +209,7 @@ public class MainHook implements IXposedHookLoadPackage {
                             } catch (Throwable e) {
 
                                 XposedBridge.log(
-                                        "hook crash"
+                                        "HOOK CRASH"
                                 );
 
                                 XposedBridge.log(e);
@@ -202,7 +225,7 @@ public class MainHook implements IXposedHookLoadPackage {
         } catch (Throwable e) {
 
             XposedBridge.log(
-                    "hook failed"
+                    "HOOK FAILED"
             );
 
             XposedBridge.log(e);

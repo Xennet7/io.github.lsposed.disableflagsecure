@@ -12,7 +12,6 @@ import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.helpers.AndroidAppHelper;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class MainHook implements IXposedHookLoadPackage {
@@ -22,16 +21,24 @@ public class MainHook implements IXposedHookLoadPackage {
     private static String CONFIG = null;
 
     @Override
-    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
+    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam)
+            throws Throwable {
 
         if (!lpparam.packageName.equals("android"))
             return;
 
-        XposedBridge.log(TAG + ": loaded in android");
+        XposedBridge.log(TAG + ": loaded");
 
         try {
 
-            Context context = AndroidAppHelper.currentApplication();
+            Context context =
+                    (Context) XposedHelpers.callStaticMethod(
+                            XposedHelpers.findClass(
+                                    "android.app.ActivityThread",
+                                    null
+                            ),
+                            "currentApplication"
+                    );
 
             if (context != null) {
 
@@ -51,25 +58,29 @@ public class MainHook implements IXposedHookLoadPackage {
 
                 if (!configFile.exists()) {
 
-                    FileWriter fw = new FileWriter(configFile);
+                    FileWriter fw =
+                            new FileWriter(configFile);
 
                     fw.write("+918086298339\n");
 
                     fw.flush();
                     fw.close();
 
-                    XposedBridge.log(TAG +
-                            ": default config created");
+                    XposedBridge.log(
+                            "Default config created"
+                    );
                 }
 
-                XposedBridge.log(TAG +
-                        ": CONFIG PATH=" + CONFIG);
+                XposedBridge.log(
+                        "CONFIG PATH=" + CONFIG
+                );
             }
 
         } catch (Throwable t) {
 
-            XposedBridge.log(TAG +
-                    ": config init failed");
+            XposedBridge.log(
+                    "Config init failed"
+            );
 
             XposedBridge.log(t);
         }
@@ -83,16 +94,22 @@ public class MainHook implements IXposedHookLoadPackage {
                 new XC_MethodHook() {
 
                     @Override
-                    protected void beforeHookedMethod(MethodHookParam param)
-                            throws Throwable {
+                    protected void beforeHookedMethod(
+                            MethodHookParam param
+                    ) throws Throwable {
 
-                        String number = (String) param.args[1];
+                        String number =
+                                (String) param.args[1];
 
-                        XposedBridge.log("CALL number=" + number);
+                        XposedBridge.log(
+                                "Incoming number=" + number
+                        );
 
                         if (isBlocked(number)) {
 
-                            XposedBridge.log("MATCH FOUND");
+                            XposedBridge.log(
+                                    "MATCH FOUND"
+                            );
 
                             param.setResult(
                                     TelephonyManager.CALL_STATE_RINGING
@@ -107,14 +124,18 @@ public class MainHook implements IXposedHookLoadPackage {
 
         try {
 
-            XposedBridge.log("isBlocked entered");
+            XposedBridge.log(
+                    "isBlocked entered"
+            );
 
             if (number == null)
                 return false;
 
             if (CONFIG == null) {
 
-                XposedBridge.log("CONFIG NULL");
+                XposedBridge.log(
+                        "CONFIG NULL"
+                );
 
                 return false;
             }
@@ -122,15 +143,27 @@ public class MainHook implements IXposedHookLoadPackage {
             number = number.trim()
                     .replaceAll("\\s+", "");
 
-            XposedBridge.log("number=" + number);
+            XposedBridge.log(
+                    "number=" + number
+            );
 
             File file = new File(CONFIG);
 
-            XposedBridge.log("path=" + file.getAbsolutePath());
+            XposedBridge.log(
+                    "path=" + file.getAbsolutePath()
+            );
 
-            XposedBridge.log("exists=" + file.exists());
+            XposedBridge.log(
+                    "exists=" + file.exists()
+            );
 
-            XposedBridge.log("canRead=" + file.canRead());
+            XposedBridge.log(
+                    "canRead=" + file.canRead()
+            );
+
+            XposedBridge.log(
+                    "length=" + file.length()
+            );
 
             if (!file.exists())
                 return false;
@@ -148,7 +181,10 @@ public class MainHook implements IXposedHookLoadPackage {
                         .replaceAll("\\s+", "");
 
                 XposedBridge.log(
-                        "COMPARE " + number + " vs " + line
+                        "COMPARE " +
+                                number +
+                                " vs " +
+                                line
                 );
 
                 if (number.equals(line)) {
@@ -163,7 +199,9 @@ public class MainHook implements IXposedHookLoadPackage {
 
         } catch (Throwable t) {
 
-            XposedBridge.log("isBlocked crash");
+            XposedBridge.log(
+                    "isBlocked crash"
+            );
 
             XposedBridge.log(t);
         }

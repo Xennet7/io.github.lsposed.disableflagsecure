@@ -8,19 +8,15 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class MainHook implements IXposedHookLoadPackage {
 
-    // =========================
     // HARD CODED NUMBER
-    // =========================
 
-    private static final String BLOCKED_NUMBER =
+    private static final String BLOCKED =
             "+918086298339";
 
     @Override
     public void handleLoadPackage(
             XC_LoadPackage.LoadPackageParam lpparam
     ) throws Throwable {
-
-        // ONLY SYSTEM SERVER
 
         if (!"android".equals(
                 lpparam.packageName))
@@ -34,7 +30,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
             Class<?> cls =
                     XposedHelpers.findClass(
-                            "com.android.phone.PhoneInterfaceManager",
+                            "com.android.server.TelephonyRegistry",
                             lpparam.classLoader
                     );
 
@@ -42,7 +38,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
                     cls,
 
-                    "notifyCallState",
+                    "notifyCallStateForAllSubs",
 
                     int.class,
                     String.class,
@@ -63,31 +59,26 @@ public class MainHook implements IXposedHookLoadPackage {
                                         (String) param.args[1];
 
                                 XposedBridge.log(
-                                        "CALL STATE: "
+                                        "CALL STATE="
                                                 + state
-                                                + " NUMBER: "
+                                                + " NUMBER="
                                                 + number
                                 );
 
-                                // =====================
-                                // MATCH CHECK
-                                // =====================
-
                                 if (number != null
-                                        && (number.contains(BLOCKED_NUMBER)
-                                        || BLOCKED_NUMBER.contains(number))) {
+                                        && (number.contains(BLOCKED)
+                                        || BLOCKED.contains(number))) {
 
                                     XposedBridge.log(
-                                            "MATCH FOUND: "
-                                                    + number
+                                            "MATCH FOUND"
                                     );
-
-                                    // STATES:
-                                    //
-                                    // 0 = IDLE
-                                    // 1 = RINGING
-                                    // 2 = OFFHOOK
                                 }
+
+                                // STATES:
+                                //
+                                // 0 = IDLE
+                                // 1 = RINGING
+                                // 2 = OFFHOOK
 
                             } catch (Throwable e) {
 
@@ -102,7 +93,7 @@ public class MainHook implements IXposedHookLoadPackage {
             );
 
             XposedBridge.log(
-                    "notifyCallState hooked"
+                    "notifyCallStateForAllSubs hooked"
             );
 
         } catch (Throwable e) {

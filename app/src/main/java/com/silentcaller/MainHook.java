@@ -1,52 +1,139 @@
 package com.silentcaller;
 
+import android.content.Context;
+import android.telephony.TelephonyManager;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.helpers.AndroidAppHelper;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class MainHook implements IXposedHookLoadPackage {
 
-    private static final String CONFIG =
-            "/data/local/tmp/silentcaller.txt";
+    private static final String TAG = "SilentCaller";
 
-    private boolean isBlocked(String number) {
+    private static String CONFIG = null;
 
-        XposedBridge.log(
-                "isBlocked entered"
-        );
+    @Override
+    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
+
+        if (!lpparam.packageName.equals("android"))
+            return;
+
+        XposedBridge.log(TAG + ": loaded in android");
 
         try {
 
-            if (number == null) {
+            Context context = AndroidAppHelper.currentApplication();
 
-                XposedBridge.log(
-                        "number null"
-                );
+            if (context != null) {
+
+                Context de =
+                        context.createDeviceProtectedStorageContext();
+
+                File dir = de.getFilesDir();
+
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+
+                File configFile =
+                        new File(dir, "silentcaller.txt");
+
+                CONFIG = configFile.getAbsolutePath();
+
+                if (!configFile.exists()) {
+
+                    FileWriter fw = new FileWriter(configFile);
+
+                    fw.write("+918086298339\n");
+
+                    fw.flush();
+                    fw.close();
+
+                    XposedBridge.log(TAG +
+                            ": default config created");
+                }
+
+                XposedBridge.log(TAG +
+                        ": CONFIG PATH=" + CONFIG);
+            }
+
+        } catch (Throwable t) {
+
+            XposedBridge.log(TAG +
+                    ": config init failed");
+
+            XposedBridge.log(t);
+        }
+
+        XposedHelpers.findAndHookMethod(
+                "com.android.server.telecom.calls.BlockChecker",
+                lpparam.classLoader,
+                "isBlocked",
+                android.content.Context.class,
+                String.class,
+                new XC_MethodHook() {
+
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param)
+                            throws Throwable {
+
+                        String number = (String) param.args[1];
+
+                        XposedBridge.log("CALL number=" + number);
+
+                        if (isBlocked(number)) {
+
+                            XposedBridge.log("MATCH FOUND");
+
+                            param.setResult(
+                                    TelephonyManager.CALL_STATE_RINGING
+                            );
+                        }
+                    }
+                }
+        );
+    }
+
+    private static boolean isBlocked(String number) {
+
+        try {
+
+            XposedBridge.log("isBlocked entered");
+
+            if (number == null)
+                return false;
+
+            if (CONFIG == null) {
+
+                XposedBridge.log("CONFIG NULL");
 
                 return false;
             }
 
-            number = number.trim();
+            number = number.trim()
+                    .replaceAll("\\s+", "");
 
-            XposedBridge.log(
-                    "number=" + number
-            );
+            XposedBridge.log("number=" + number);
 
             File file = new File(CONFIG);
 
-            XposedBridge.log(
-                    "path=" + CONFIG
-            );
+            XposedBridge.log("path=" + file.getAbsolutePath());
 
-            XposedBridge.log(
-                    "exists=" + file.exists()
-            );
+            XposedBridge.log("exists=" + file.exists());
+
+            XposedBridge.log("canRead=" + file.canRead());
+
+            if (!file.exists())
+                return false;
 
             BufferedReader br =
                     new BufferedReader(
@@ -57,21 +144,14 @@ public class MainHook implements IXposedHookLoadPackage {
 
             while ((line = br.readLine()) != null) {
 
-                line = line.trim();
+                line = line.trim()
+                        .replaceAll("\\s+", "");
 
                 XposedBridge.log(
-                        "COMPARE: ["
-                                + number
-                                + "] vs ["
-                                + line
-                                + "]"
+                        "COMPARE " + number + " vs " + line
                 );
 
                 if (number.equals(line)) {
-
-                    XposedBridge.log(
-                            "MATCH FOUND"
-                    );
 
                     br.close();
 
@@ -83,93 +163,11 @@ public class MainHook implements IXposedHookLoadPackage {
 
         } catch (Throwable t) {
 
-            XposedBridge.log(
-                    "isBlocked crash"
-            );
+            XposedBridge.log("isBlocked crash");
 
             XposedBridge.log(t);
         }
 
         return false;
-    }
-
-    @Override
-    public void handleLoadPackage(
-            XC_LoadPackage.LoadPackageParam lpparam
-    ) {
-
-        if (!lpparam.packageName.equals(
-                "android"
-        )) {
-            return;
-        }
-
-        try {
-
-            XposedBridge.log(
-                    "SilentCaller loaded"
-            );
-
-            Class<?> cls =
-                    XposedHelpers.findClass(
-                            "com.android.server.TelephonyRegistry",
-                            lpparam.classLoader
-                    );
-
-            XposedBridge.log(
-                    "TelephonyRegistry hooked"
-            );
-
-            XposedHelpers.findAndHookMethod(
-                    cls,
-                    "notifyCallState",
-                    int.class,
-                    int.class,
-                    int.class,
-                    String.class,
-
-                    new XC_MethodHook() {
-
-                        @Override
-                        protected void beforeHookedMethod(
-                                MethodHookParam param
-                        ) {
-
-                            try {
-
-                                int state =
-                                        (int) param.args[2];
-
-                                String number =
-                                        (String) param.args[3];
-
-                                XposedBridge.log(
-                                        "CALL STATE: "
-                                                + state
-                                                + " NUMBER: "
-                                                + number
-                                );
-
-                                if (state != 1)
-                                    return;
-
-                                if (!isBlocked(number))
-                                    return;
-
-                                XposedBridge.log(
-                                        "BLOCKED CALL"
-                                );
-
-                            } catch (Throwable t) {
-
-                                XposedBridge.log(t);
-                            }
-                        }
-                    });
-
-        } catch (Throwable t) {
-
-            XposedBridge.log(t);
-        }
     }
 }

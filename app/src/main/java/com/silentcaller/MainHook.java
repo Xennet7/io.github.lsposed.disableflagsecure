@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
-import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -80,16 +79,19 @@ public class MainHook implements IXposedHookLoadPackage {
                             )
                     );
 
-            XposedHelpers.callMethod(
-                    service,
-                    "setInterruptionFilter",
-                    "android",
-                    mode
-            );
+            for (var method :
+                    service.getClass().getDeclaredMethods()) {
 
-            XposedBridge.log(
-                    "DND MODE SET: " + mode
-            );
+                if (method.getName().contains(
+                        "Interruption"
+                )) {
+
+                    XposedBridge.log(
+                            "DND METHOD: "
+                                    + method.toString()
+                    );
+                }
+            }
 
         } catch (Throwable t) {
 
@@ -128,7 +130,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     int.class,
                     String.class,
 
-                    new XC_MethodHook() {
+                    new de.robv.android.xposed.XC_MethodHook() {
 
                         @Override
                         protected void beforeHookedMethod(
@@ -150,25 +152,14 @@ public class MainHook implements IXposedHookLoadPackage {
                                                 + number
                                 );
 
-                                // CALL_STATE_RINGING
                                 if (state == 1 &&
                                         isBlocked(number)) {
 
                                     XposedBridge.log(
-                                            "BLOCKED CALL -> DND ON"
+                                            "BLOCKED CALL"
                                     );
 
                                     setDnd(3);
-                                }
-
-                                // CALL_STATE_IDLE
-                                if (state == 0) {
-
-                                    XposedBridge.log(
-                                            "CALL ENDED -> DND OFF"
-                                    );
-
-                                    setDnd(1);
                                 }
 
                             } catch (Throwable t) {

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -21,10 +22,18 @@ public class MainHook implements IXposedHookLoadPackage {
             if (number == null)
                 return false;
 
+            number = number.trim();
+
             File file = new File(CONFIG);
 
-            if (!file.exists())
+            if (!file.exists()) {
+
+                XposedBridge.log(
+                        "CONFIG NOT FOUND"
+                );
+
                 return false;
+            }
 
             BufferedReader br =
                     new BufferedReader(
@@ -40,9 +49,21 @@ public class MainHook implements IXposedHookLoadPackage {
                 if (line.isEmpty())
                     continue;
 
-                if (number.contains(line)) {
+                XposedBridge.log(
+                        "COMPARE: ["
+                                + number
+                                + "] vs ["
+                                + line
+                                + "]"
+                );
+
+                if (number.equals(line)) {
 
                     br.close();
+
+                    XposedBridge.log(
+                            "MATCH FOUND"
+                    );
 
                     return true;
                 }
@@ -56,47 +77,6 @@ public class MainHook implements IXposedHookLoadPackage {
         }
 
         return false;
-    }
-
-    private void setDnd(int mode) {
-
-        try {
-
-            Object service =
-                    XposedHelpers.callStaticMethod(
-                            XposedHelpers.findClass(
-                                    "android.app.INotificationManager$Stub",
-                                    null
-                            ),
-                            "asInterface",
-                            XposedHelpers.callStaticMethod(
-                                    XposedHelpers.findClass(
-                                            "android.os.ServiceManager",
-                                            null
-                                    ),
-                                    "getService",
-                                    "notification"
-                            )
-                    );
-
-            for (var method :
-                    service.getClass().getDeclaredMethods()) {
-
-                if (method.getName().contains(
-                        "Interruption"
-                )) {
-
-                    XposedBridge.log(
-                            "DND METHOD: "
-                                    + method.toString()
-                    );
-                }
-            }
-
-        } catch (Throwable t) {
-
-            XposedBridge.log(t);
-        }
     }
 
     @Override
@@ -130,7 +110,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     int.class,
                     String.class,
 
-                    new de.robv.android.xposed.XC_MethodHook() {
+                    new XC_MethodHook() {
 
                         @Override
                         protected void beforeHookedMethod(
@@ -158,8 +138,6 @@ public class MainHook implements IXposedHookLoadPackage {
                                     XposedBridge.log(
                                             "BLOCKED CALL"
                                     );
-
-                                    setDnd(3);
                                 }
 
                             } catch (Throwable t) {

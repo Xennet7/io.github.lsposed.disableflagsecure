@@ -3,13 +3,11 @@ package com.silentcaller;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.provider.Settings;
-import android.telephony.TelephonyManager;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
-
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class MainHook implements IXposedHookLoadPackage {
@@ -19,105 +17,142 @@ public class MainHook implements IXposedHookLoadPackage {
             XC_LoadPackage.LoadPackageParam lpparam
     ) throws Throwable {
 
-        // ONLY ANDROID PROCESS
+        // ONLY SYSTEM SERVER
 
-        if (!lpparam.packageName.equals("android")) {
+        if (!"android".equals(
+                lpparam.packageName))
             return;
-        }
 
-        // FIND TELEPHONY REGISTRY
+        XposedBridge.log(
+                "SilentCaller loaded"
+        );
 
-        Class<?> telephonyRegistryClass =
-                XposedHelpers.findClass(
-                        "com.android.server.TelephonyRegistry",
-                        lpparam.classLoader
-                );
+        try {
 
-        // HOOK CALL STATE
+            Class<?> cls =
+                    XposedHelpers.findClass(
+                            "com.android.server.TelephonyRegistry",
+                            lpparam.classLoader
+                    );
 
-        XposedHelpers.findAndHookMethod(
+            XposedHelpers.findAndHookMethod(
 
-                telephonyRegistryClass,
+                    cls,
 
-                "notifyCallState",
+                    "notifyCallStateForAllSubs",
 
-                int.class,
-                int.class,
-                int.class,
-                String.class,
+                    int.class,
+                    int.class,
+                    int.class,
+                    String.class,
 
-                new XC_MethodHook() {
+                    new XC_MethodHook() {
 
-                    @Override
-                    protected void beforeHookedMethod(
-                            MethodHookParam param
-                    ) throws Throwable {
+                        @Override
+                        protected void beforeHookedMethod(
+                                MethodHookParam param
+                        ) throws Throwable {
 
-                        try {
+                            try {
 
-                            // GET SYSTEM CONTEXT
+                                // GET CONTEXT
 
-                            Context context =
-                                    (Context)
-                                            XposedHelpers.callMethod(
+                                Context context =
+                                        (Context)
+                                                XposedHelpers.callMethod(
 
-                                                    XposedHelpers.callStaticMethod(
+                                                        XposedHelpers.callStaticMethod(
 
-                                                            XposedHelpers.findClass(
-                                                                    "android.app.ActivityThread",
-                                                                    null
-                                                            ),
+                                                                XposedHelpers.findClass(
+                                                                        "android.app.ActivityThread",
+                                                                        null
+                                                                ),
 
-                                                            "currentActivityThread"
-                                                    ),
+                                                                "currentActivityThread"
+                                                        ),
 
-                                                    "getSystemContext"
-                                            );
+                                                        "getSystemContext"
+                                                );
 
-                            // FIRST THING
-                            // MODULE ENABLE CHECK
+                                // =========================
+                                // ENABLE / DISABLE CHECK
+                                // =========================
 
-                            if (!isModuleEnabled(context)) {
-                                return;
-                            }
+                                int disabled =
+                                        Settings.Global.getInt(
+                                                context.getContentResolver(),
+                                                "silentcaller_disabled",
+                                                0
+                                        );
 
-                            // NOW PROCESS
+                                if (disabled == 1) {
+                                    return;
+                                }
 
-                            int state =
-                                    (int) param.args[2];
+                                int state =
+                                        (int) param.args[2];
 
-                            String incomingNumber =
-                                    (String) param.args[3];
+                                String incoming =
+                                        (String) param.args[3];
 
-                            XposedBridge.log(
-                                    "CALL STATE=" +
-                                            state +
-                                            " NUMBER=" +
-                                            incomingNumber
-                            );
+                                XposedBridge.log(
+                                        "CALL STATE=" +
+                                                state +
+                                                " NUMBER=" +
+                                                incoming
+                                );
 
-                            // INCOMING CALL
+                                // =========================
+                                // GET NUMBERS FROM GLOBAL SETTINGS
+                                // =========================
 
-                            if (state ==
-                                    TelephonyManager.CALL_STATE_RINGING) {
+                                String blockedList =
+                                        Settings.Global.getString(
+                                                context.getContentResolver(),
+                                                "silentcaller_numbers"
+                                        );
 
-                                if (incomingNumber != null &&
-                                        isBlockedNumber(
-                                                context,
-                                                incomingNumber
-                                        )) {
+                                if (blockedList == null ||
+                                        blockedList.isEmpty()) {
+                                    return;
+                                }
 
-                                    XposedBridge.log(
-                                            "MATCH FOUND"
-                                    );
+                                boolean matched = false;
+
+                                for (String n :
+                                        blockedList.split(",")) {
+
+                                    n = n.trim();
+
+                                    if (!n.isEmpty() &&
+                                            incoming != null &&
+                                            incoming.contains(n)) {
+
+                                        matched = true;
+
+                                        XposedBridge.log(
+                                                "MATCH FOUND"
+                                        );
+
+                                        break;
+                                    }
+                                }
+
+                                if (!matched) {
+                                    return;
+                                }
+
+                                // =========================
+                                // RINGING
+                                // =========================
+
+                                if (state == 1) {
 
                                     NotificationManager nm =
                                             (NotificationManager)
                                                     context.getSystemService(
                                                             Context.NOTIFICATION_SERVICE
                                                     );
-
-                                    // ENABLE TOTAL SILENT
 
                                     nm.setInterruptionFilter(
                                             NotificationManager.INTERRUPTION_FILTER_NONE
@@ -127,111 +162,39 @@ public class MainHook implements IXposedHookLoadPackage {
                                             "DND NONE ENABLED"
                                     );
                                 }
+
+                                // =========================
+                                // IDLE
+                                // =========================
+
+                                if (state == 0) {
+
+                                    NotificationManager nm =
+                                            (NotificationManager)
+                                                    context.getSystemService(
+                                                            Context.NOTIFICATION_SERVICE
+                                                    );
+
+                                    nm.setInterruptionFilter(
+                                            NotificationManager.INTERRUPTION_FILTER_ALL
+                                    );
+
+                                    XposedBridge.log(
+                                            "DND RESTORED"
+                                    );
+                                }
+
+                            } catch (Throwable e) {
+
+                                XposedBridge.log(e);
                             }
-
-                            // CALL ENDED
-
-                            if (state ==
-                                    TelephonyManager.CALL_STATE_IDLE) {
-
-                                NotificationManager nm =
-                                        (NotificationManager)
-                                                context.getSystemService(
-                                                        Context.NOTIFICATION_SERVICE
-                                                );
-
-                                // RESTORE NORMAL
-
-                                nm.setInterruptionFilter(
-                                        NotificationManager.INTERRUPTION_FILTER_ALL
-                                );
-
-                                XposedBridge.log(
-                                        "DND RESTORED"
-                                );
-                            }
-
-                        } catch (Throwable e) {
-
-                            XposedBridge.log(e);
                         }
                     }
-                }
-        );
-    }
-
-    // ENABLE / DISABLE MODULE
-
-    private static boolean isModuleEnabled(
-            Context context
-    ) {
-
-        try {
-
-            int disabled =
-                    Settings.Global.getInt(
-
-                            context.getContentResolver(),
-
-                            "silentcaller_disabled",
-
-                            0
-                    );
-
-            return disabled == 0;
-
-        } catch (Throwable e) {
-
-            return true;
-        }
-    }
-
-    // BLOCKED NUMBER CHECK
-
-    private static boolean isBlockedNumber(
-            Context context,
-            String incoming
-    ) {
-
-        try {
-
-            String numbers =
-                    Settings.Global.getString(
-
-                            context.getContentResolver(),
-
-                            "silentcaller_numbers"
-                    );
-
-            if (numbers == null ||
-                    numbers.isEmpty()) {
-
-                return false;
-            }
-
-            for (String n : numbers.split(",")) {
-
-                n = n.trim();
-
-                if (n.isEmpty()) {
-                    continue;
-                }
-
-                if (incoming.contains(n)) {
-
-                    XposedBridge.log(
-                            "BLOCKED NUMBER MATCH: " + n
-                    );
-
-                    return true;
-                }
-            }
+            );
 
         } catch (Throwable e) {
 
             XposedBridge.log(e);
         }
-
-        return false;
     }
 }

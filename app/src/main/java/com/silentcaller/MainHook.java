@@ -35,9 +35,6 @@ public class MainHook implements IXposedHookLoadPackage {
                             lpparam.classLoader
                     );
 
-            // DO NOT CHANGE THIS
-            // KEEP EXACTLY AS YOUR WORKING VERSION
-
             XposedHelpers.findAndHookMethod(
 
                     cls,
@@ -45,6 +42,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     "notifyCallStateForAllSubs",
 
                     int.class,
+                    String.class,
 
                     new XC_MethodHook() {
 
@@ -58,12 +56,12 @@ public class MainHook implements IXposedHookLoadPackage {
                                 int state =
                                         (int) param.args[0];
 
-                                String incoming =
-                                        (String) param.args[3];
+                                String number =
+                                        (String) param.args[1];
 
-                                // =========================
-                                // GET SYSTEM CONTEXT
-                                // =========================
+                                // =====================
+                                // GET CONTEXT
+                                // =====================
 
                                 Context context =
                                         (Context)
@@ -82,9 +80,10 @@ public class MainHook implements IXposedHookLoadPackage {
                                                         "getSystemContext"
                                                 );
 
-                                // =========================
+                                // =====================
                                 // ENABLE / DISABLE
-                                // =========================
+                                // FIRST CHECK
+                                // =====================
 
                                 int disabled =
                                         Settings.Global.getInt(
@@ -98,15 +97,15 @@ public class MainHook implements IXposedHookLoadPackage {
                                 }
 
                                 XposedBridge.log(
-                                        "CALL STATE=" +
-                                                state +
-                                                " NUMBER=" +
-                                                incoming
+                                        "CALL STATE="
+                                                + state
+                                                + " NUMBER="
+                                                + number
                                 );
 
-                                // =========================
+                                // =====================
                                 // GET BLOCKED NUMBERS
-                                // =========================
+                                // =====================
 
                                 String blockedList =
                                         Settings.Global.getString(
@@ -114,8 +113,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                                 "silentcaller_numbers"
                                         );
 
-                                if (blockedList == null ||
-                                        blockedList.isEmpty()) {
+                                if (blockedList == null
+                                        || blockedList.isEmpty()) {
                                     return;
                                 }
 
@@ -126,67 +125,96 @@ public class MainHook implements IXposedHookLoadPackage {
 
                                     n = n.trim();
 
-                                    if (!n.isEmpty() &&
-                                            incoming != null &&
-                                            incoming.contains(n)) {
+                                    if (!n.isEmpty()
+                                            && number != null
+                                            && (number.contains(n)
+                                            || n.contains(number))) {
 
                                         matched = true;
-
                                         break;
                                     }
                                 }
 
-                                if (!matched) {
-                                    return;
-                                }
+                                // =====================
+                                // MATCH CHECK
+                                // =====================
 
-                                XposedBridge.log(
-                                        "MATCH FOUND"
-                                );
-
-                                // =========================
-                                // RINGING
-                                // =========================
-
-                                if (state == 1) {
-
-                                    NotificationManager nm =
-                                            (NotificationManager)
-                                                    context.getSystemService(
-                                                            Context.NOTIFICATION_SERVICE
-                                                    );
-
-                                    nm.setInterruptionFilter(
-                                            NotificationManager.INTERRUPTION_FILTER_NONE
-                                    );
+                                if (matched) {
 
                                     XposedBridge.log(
-                                            "DND NONE ENABLED"
+                                            "MATCH FOUND"
                                     );
+
+                                    // =====================
+                                    // ONLY WHEN RINGING
+                                    // =====================
+
+                                    if (state == 1) {
+
+                                        try {
+
+                                            NotificationManager nm =
+                                                    (NotificationManager)
+                                                            context.getSystemService(
+                                                                    Context.NOTIFICATION_SERVICE
+                                                            );
+
+                                            nm.setInterruptionFilter(
+                                                    NotificationManager.INTERRUPTION_FILTER_NONE
+                                            );
+
+                                            XposedBridge.log(
+                                                    "DND NONE ENABLED"
+                                            );
+
+                                        } catch (Throwable e) {
+
+                                            XposedBridge.log(
+                                                    "DND FAILED"
+                                            );
+
+                                            XposedBridge.log(e);
+                                        }
+                                    }
                                 }
 
-                                // =========================
-                                // IDLE
-                                // =========================
+                                // =====================
+                                // OPTIONAL:
+                                // RESTORE NORMAL DND
+                                // WHEN CALL ENDS
+                                // =====================
 
                                 if (state == 0) {
 
-                                    NotificationManager nm =
-                                            (NotificationManager)
-                                                    context.getSystemService(
-                                                            Context.NOTIFICATION_SERVICE
-                                                    );
+                                    try {
 
-                                    nm.setInterruptionFilter(
-                                            NotificationManager.INTERRUPTION_FILTER_ALL
-                                    );
+                                        NotificationManager nm =
+                                                (NotificationManager)
+                                                        context.getSystemService(
+                                                                Context.NOTIFICATION_SERVICE
+                                                        );
 
-                                    XposedBridge.log(
-                                            "DND RESTORED"
-                                    );
+                                        nm.setInterruptionFilter(
+                                                NotificationManager.INTERRUPTION_FILTER_ALL
+                                        );
+
+                                        XposedBridge.log(
+                                                "DND RESTORED"
+                                        );
+
+                                    } catch (Throwable e) {
+
+                                        XposedBridge.log(
+                                                "RESTORE FAILED"
+                                        );
+                                    }
                                 }
 
                             } catch (Throwable e) {
+
+                                XposedBridge.log(
+                                        "hook crash"
+                                );
 
                                 XposedBridge.log(e);
                             }
@@ -194,7 +222,15 @@ public class MainHook implements IXposedHookLoadPackage {
                     }
             );
 
+            XposedBridge.log(
+                    "notifyCallStateForAllSubs hooked"
+            );
+
         } catch (Throwable e) {
+
+            XposedBridge.log(
+                    "hook failed"
+            );
 
             XposedBridge.log(e);
         }

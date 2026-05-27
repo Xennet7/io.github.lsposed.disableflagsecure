@@ -35,6 +35,9 @@ public class MainHook implements IXposedHookLoadPackage {
                             lpparam.classLoader
                     );
 
+            // DO NOT CHANGE THIS
+            // KEEP EXACTLY AS YOUR WORKING VERSION
+
             XposedHelpers.findAndHookMethod(
 
                     cls,
@@ -42,9 +45,6 @@ public class MainHook implements IXposedHookLoadPackage {
                     "notifyCallStateForAllSubs",
 
                     int.class,
-                    int.class,
-                    int.class,
-                    String.class,
 
                     new XC_MethodHook() {
 
@@ -55,7 +55,15 @@ public class MainHook implements IXposedHookLoadPackage {
 
                             try {
 
-                                // GET CONTEXT
+                                int state =
+                                        (int) param.args[0];
+
+                                String incoming =
+                                        (String) param.args[3];
+
+                                // =========================
+                                // GET SYSTEM CONTEXT
+                                // =========================
 
                                 Context context =
                                         (Context)
@@ -75,7 +83,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                                 );
 
                                 // =========================
-                                // ENABLE / DISABLE CHECK
+                                // ENABLE / DISABLE
                                 // =========================
 
                                 int disabled =
@@ -89,12 +97,6 @@ public class MainHook implements IXposedHookLoadPackage {
                                     return;
                                 }
 
-                                int state =
-                                        (int) param.args[2];
-
-                                String incoming =
-                                        (String) param.args[3];
-
                                 XposedBridge.log(
                                         "CALL STATE=" +
                                                 state +
@@ -103,7 +105,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 );
 
                                 // =========================
-                                // GET NUMBERS FROM GLOBAL SETTINGS
+                                // GET BLOCKED NUMBERS
                                 // =========================
 
                                 String blockedList =
@@ -130,10 +132,6 @@ public class MainHook implements IXposedHookLoadPackage {
 
                                         matched = true;
 
-                                        XposedBridge.log(
-                                                "MATCH FOUND"
-                                        );
-
                                         break;
                                     }
                                 }
@@ -141,6 +139,10 @@ public class MainHook implements IXposedHookLoadPackage {
                                 if (!matched) {
                                     return;
                                 }
+
+                                XposedBridge.log(
+                                        "MATCH FOUND"
+                                );
 
                                 // =========================
                                 // RINGING

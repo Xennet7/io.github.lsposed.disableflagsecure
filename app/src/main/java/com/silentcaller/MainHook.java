@@ -17,23 +17,36 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private boolean isBlocked(String number) {
 
+        XposedBridge.log(
+                "isBlocked entered"
+        );
+
         try {
 
-            if (number == null)
-                return false;
-
-            number = number.trim();
-
-            File file = new File(CONFIG);
-
-            if (!file.exists()) {
+            if (number == null) {
 
                 XposedBridge.log(
-                        "CONFIG NOT FOUND"
+                        "number null"
                 );
 
                 return false;
             }
+
+            number = number.trim();
+
+            XposedBridge.log(
+                    "number=" + number
+            );
+
+            File file = new File(CONFIG);
+
+            XposedBridge.log(
+                    "path=" + CONFIG
+            );
+
+            XposedBridge.log(
+                    "exists=" + file.exists()
+            );
 
             BufferedReader br =
                     new BufferedReader(
@@ -45,9 +58,6 @@ public class MainHook implements IXposedHookLoadPackage {
             while ((line = br.readLine()) != null) {
 
                 line = line.trim();
-
-                if (line.isEmpty())
-                    continue;
 
                 XposedBridge.log(
                         "COMPARE: ["
@@ -72,6 +82,10 @@ public class MainHook implements IXposedHookLoadPackage {
             br.close();
 
         } catch (Throwable t) {
+
+            XposedBridge.log(
+                    "isBlocked crash"
+            );
 
             XposedBridge.log(t);
         }
